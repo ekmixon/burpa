@@ -59,12 +59,10 @@ def config_check(api_port, proxy_url):
     # using the API
     print("[+] Checking the Burp proxy configuration ...")
     try:
-        r = requests.get(
-            "{}:{}/burp/configuration".format(proxy_url, api_port)
-        )
+        r = requests.get(f"{proxy_url}:{api_port}/burp/configuration")
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print("Error retrieving the Burp configuration: {}".format(e))
+        print(f"Error retrieving the Burp configuration: {e}")
         sys.exit(1)
     else:
         config = r.json()
@@ -93,14 +91,11 @@ def config_update(api_port, proxy_port, proxy_url):
         }
     }
     try:
-        r = requests.put(
-            "{}:{}/burp/configuration".format(proxy_url, api_port),
-            json=proxy_conf
-        )
+        r = requests.put(f"{proxy_url}:{api_port}/burp/configuration", json=proxy_conf)
         r.raise_for_status()
         print("[-] Proxy configuration updated")
     except requests.exceptions.RequestException as e:
-        print("Error updating the Burp configuration: {}".format(e))
+        print(f"Error updating the Burp configuration: {e}")
         sys.exit(1)
 
 
@@ -108,12 +103,10 @@ def proxy_history(api_port, proxy_url):
     """Retrieve the Burp proxy history"""
     print("[+] Retrieving the Burp proxy history ...")
     try:
-        r = requests.get(
-            "{}:{}/burp/proxy/history".format(proxy_url, api_port)
-        )
+        r = requests.get(f"{proxy_url}:{api_port}/burp/proxy/history")
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print("Error retrieving the Burp proxy history: {}".format(e))
+        print(f"Error retrieving the Burp proxy history: {e}")
         sys.exit(1)
     else:
         resp = r.json()
@@ -121,9 +114,7 @@ def proxy_history(api_port, proxy_url):
             # Unique list of URLs
             host_set = {"{protocol}://{host}".format(**i)
                         for i in resp['messages']}
-            print("[-] Found {} unique targets in proxy history".format(
-                len(host_set)
-            ))
+            print(f"[-] Found {len(host_set)} unique targets in proxy history")
             return list(host_set)
         else:
             print("[-] Proxy history is empty")
@@ -134,85 +125,60 @@ def update_scope(action, api_port, proxy_url, scope):
     if action == "include":
         for i in scope:
             try:
-                r = requests.put(
-                    "{}:{}/burp/target/scope?url={}".format(
-                        proxy_url,
-                        api_port,
-                        i
-                    )
-                )
+                r = requests.put(f"{proxy_url}:{api_port}/burp/target/scope?url={i}")
                 r.raise_for_status()
-                print("[-] {} included in scope".format(i))
+                print(f"[-] {i} included in scope")
             except requests.exceptions.RequestException as e:
-                print("Error updating the target scope: {}".format(e))
+                print(f"Error updating the target scope: {e}")
                 sys.exit(1)
     elif action == "exclude":
         for i in scope:
             try:
-                r = requests.delete(
-                    "{}:{}/burp/target/scope?url={}".format(
-                        proxy_url,
-                        api_port,
-                        i
-                    )
-                )
+                r = requests.delete(f"{proxy_url}:{api_port}/burp/target/scope?url={i}")
                 r.raise_for_status()
-                print("[-] {} excluded from scope".format(i))
+                print(f"[-] {i} excluded from scope")
             except requests.exceptions.RequestException as e:
-                print("Error updating the target scope: {}".format(e))
+                print(f"Error updating the target scope: {e}")
                 sys.exit(1)
 
 
 def is_in_scope(api_port, host, proxy_url):
     """Query whether a URL is within the current scope"""
     try:
-        r = requests.get(
-            "{}:{}/burp/target/scope?url={}".format(proxy_url, api_port, host)
-        )
+        r = requests.get(f"{proxy_url}:{api_port}/burp/target/scope?url={host}")
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print("Error checking the target scope: {}".format(e))
+        print(f"Error checking the target scope: {e}")
         sys.exit(1)
     else:
         resp = r.json()
-        if resp['inScope']:
-            # print("[-] {} is in the scope".format(host))
-            return True
-        else:
-            return False
+        return bool(resp['inScope'])
 
 
 def active_scan(api_port, base_url, proxy_url):
     """Send a URL to Burp to perform active scan"""
     try:
         r = requests.post(
-            "{}:{}/burp/scanner/scans/active?baseUrl={}".format(
-                proxy_url,
-                api_port,
-                base_url
-            )
+            f"{proxy_url}:{api_port}/burp/scanner/scans/active?baseUrl={base_url}"
         )
+
         r.raise_for_status()
-        print("[-] {} Added to the scan queue".format(base_url))
+        print(f"[-] {base_url} Added to the scan queue")
     except requests.exceptions.RequestException as e:
-        print("Error adding {} to the scan queue: {}".format(base_url, e))
+        print(f"Error adding {base_url} to the scan queue: {e}")
         sys.exit(1)
 
 
 def scan_status(api_port, proxy_url):
     """Get the percentage completed for the scan queue items"""
     try:
-        r = requests.get(
-            "{}:{}/burp/scanner/status".format(proxy_url, api_port)
-        )
+        r = requests.get(f"{proxy_url}:{api_port}/burp/scanner/status")
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print("Error getting the scan status: {}".format(e))
+        print(f"Error getting the scan status: {e}")
     else:
         resp = r.json()
-        sys.stdout.write("\r[-] Scan in progress: %{}".format(
-            resp['scanPercentage'])
-        )
+        sys.stdout.write(f"\r[-] Scan in progress: %{resp['scanPercentage']}")
         sys.stdout.flush()
         return resp['scanPercentage']
 
@@ -224,33 +190,25 @@ def scan_issues(api_port, proxy_url, url_prefix):
     """
     try:
         if url_prefix == "ALL":
-            r = requests.get(
-                "{}:{}/burp/scanner/issues".format(
-                    proxy_url,
-                    api_port,
-                )
-            )
+            r = requests.get(f"{proxy_url}:{api_port}/burp/scanner/issues")
         else:
             r = requests.get(
-                "{}:{}/burp/scanner/issues?urlPrefix={}".format(
-                    proxy_url,
-                    api_port,
-                    url_prefix
-                )
+                f"{proxy_url}:{api_port}/burp/scanner/issues?urlPrefix={url_prefix}"
             )
+
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print("Error getting the scan issues: {}".format(e))
+        print(f"Error getting the scan issues: {e}")
     else:
         resp = r.json()
         if resp['issues']:
-            print("[+] Scan issues for {}:".format(url_prefix))
+            print(f"[+] Scan issues for {url_prefix}:")
             uniques_issues = {
                 "Issue: {issueName}, Severity: {severity}".format(**issue)
                 for issue in resp['issues']
             }
             for issue in uniques_issues:
-                print("  - {}".format(issue))
+                print(f"  - {issue}")
             return True
         else:
             return False
@@ -263,37 +221,24 @@ def scan_report(api_port, proxy_url, rtype, url_prefix):
     """
     try:
         if url_prefix == "ALL":
-            r = requests.get(
-                "{}:{}/burp/report?reportType={}".format(
-                    proxy_url,
-                    api_port,
-                    rtype
-                )
-            )
+            r = requests.get(f"{proxy_url}:{api_port}/burp/report?reportType={rtype}")
         else:
             r = requests.get(
-                "{}:{}/burp/report?urlPrefix={}&reportType={}".format(
-                    proxy_url,
-                    api_port,
-                    url_prefix,
-                    rtype
-                )
+                f"{proxy_url}:{api_port}/burp/report?urlPrefix={url_prefix}&reportType={rtype}"
             )
+
         r.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print("Error downloading the scan report: {}".format(e))
+        print(f"Error downloading the scan report: {e}")
     else:
-        print("[+] Downloading HTML/XML report for {}".format(url_prefix))
+        print(f"[+] Downloading HTML/XML report for {url_prefix}")
         # Write the response body (byte array) to file
-        file_name = "burp-report_{}_{}.{}".format(
-            time.strftime("%Y%m%d-%H%M%S", time.localtime()),
-            url_prefix.replace("://", "-"),
-            rtype.lower()
-        )
+        file_name = f'burp-report_{time.strftime("%Y%m%d-%H%M%S", time.localtime())}_{url_prefix.replace("://", "-")}.{rtype.lower()}'
+
         file = os.path.join(tempfile.gettempdir(), file_name)
         with open(file, 'wb') as f:
             f.write(r.text)
-        print("[-] Scan report saved to {}".format(file))
+        print(f"[-] Scan report saved to {file}")
         return file_name
 
 
@@ -310,7 +255,7 @@ def slack_report(api_token, fname):
     if response['ok']:
         print("[+] Burp scan report uploaded to Slack")
     else:
-        print("[+] Error sending Slack report: {}".format(response['error']))
+        print(f"[+] Error sending Slack report: {response['error']}")
 
 
 def burp_stop(api_port, proxy_url):
@@ -329,13 +274,11 @@ def burp_stop(api_port, proxy_url):
     #   autorestart=true
     #   user=burpa
     try:
-        r = requests.get(
-            "{}:{}/burp/stop".format(proxy_url, api_port)
-        )
-	r.raise_for_status()
+        r = requests.get(f"{proxy_url}:{api_port}/burp/stop")
+        r.raise_for_status()
         print("[-] Burp is stopped")
     except requests.exceptions.RequestException as e:
-        print("Error stopping the burp: {}".format(e))
+        print(f"Error stopping the burp: {e}")
 
 
 def parse_cmd_line_args():
@@ -427,11 +370,9 @@ def main():
         burp_stop(api_port=args.api_port,
                   proxy_url=args.proxy_url)
     elif args.action == "scan":
-        targets = proxy_history(
-            api_port=args.api_port,
-            proxy_url=args.proxy_url
-        )
-        if targets:
+        if targets := proxy_history(
+            api_port=args.api_port, proxy_url=args.proxy_url
+        ):
             # Update the scope (include/exclude)
             print("[+] Updating the scope ...")
             if args.include_scope:
@@ -461,7 +402,7 @@ def main():
                         proxy_url=args.proxy_url
                     )
                 else:
-                    print("[-] {} is not in the scope".format(target_url))
+                    print(f"[-] {target_url} is not in the scope")
             # Get the scan status
             while scan_status(api_port=args.api_port,
                               proxy_url=args.proxy_url) != 100:
